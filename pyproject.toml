@@ -1,0 +1,16 @@
+# Reserved for future publishing to the ComfyUI Registry (registry.comfy.org).
+# Set PublisherId to your registered publisher id before publishing.
+[project]
+name = "comfyui-y277an-gemini"
+description = "ComfyUI nodes for Google Gemini image generation and editing (Nano Banana / 2.5 Flash Image)."
+version = "0.1.0"
+license = { file = "LICENSE" }
+dependencies = ["google-genai", "pillow", "numpy"]
+
+[project.urls]
+Repository = "https://github.com/y277an/ComfyUI-y277an-Gemini"
+
+[tool.comfy]
+PublisherId = "y277an"
+DisplayName = "ComfyUI-y277an-Gemini"
+Repository = "https://github.com/y277an/ComfyUI-y277an-Gemini"

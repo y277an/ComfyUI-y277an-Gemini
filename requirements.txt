@@ -1,0 +1,4 @@
+google-genai
+pillow
+numpy
+# torch is provided by ComfyUI and intentionally not pinned here

@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+.cache/
+# local API key, never commit
+config.json
