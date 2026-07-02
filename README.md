@@ -30,10 +30,17 @@ Gemini (Nano Banana / 2.5 Flash Image family).
 cd /path/to/ComfyUI/custom_nodes
 git clone https://github.com/y277an/ComfyUI-y277an-Gemini.git
 /path/to/ComfyUI/python -m pip install google-genai pillow numpy
+
+# set up your API key (recommended: config file, see "API key" below)
+cd ComfyUI-y277an-Gemini
+cp config.json.example config.json
+# then edit config.json and paste your Google AI Studio key
+
 # restart ComfyUI
 ```
 
-Or use ComfyUI-Manager → "Install via Git URL" with this repo.
+Or use ComfyUI-Manager → "Install via Git URL" with this repo, then create
+`config.json` as above.
 
 ## API key
 
