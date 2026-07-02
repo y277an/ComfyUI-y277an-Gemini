@@ -21,8 +21,11 @@ Gemini (Nano Banana / 2.5 Flash Image family).
 | `seed` | Random seed (auto-folded to int32 for Gemini) |
 | `image` / `image2` / `image3` (opt) | Input images; providing any switches to edit mode |
 | `aspect_ratio` (opt) | `auto` or a fixed ratio (`1:1`, `16:9`, …) |
-| `api_key` (opt) | Overrides config.json / env if set |
+| `api_key` (opt) | Optional override; **leave empty to use config.json / env** |
 | `temperature` (opt) | Sampling temperature |
+| `system_prompt` (opt) | System instruction (style / constraints); sent only if non-empty |
+| `top_p` / `top_k` (opt) | Sampling controls; `top_k=0` means unset |
+| `enable_safety` (opt) | When off, relaxes safety filters (BLOCK_NONE) |
 
 ## Install
 
@@ -67,10 +70,11 @@ Three ways to provide it, in priority order:
 
 ## Roadmap
 
-- [ ] system prompt / instruction input
-- [ ] top_p / top_k / candidate_count
-- [ ] safety settings toggle
-- [ ] publish to ComfyUI Registry
+- [x] system prompt / instruction input
+- [x] top_p / top_k
+- [x] safety settings toggle
+- [x] publish to ComfyUI Registry
+- [ ] candidate_count / batch output
 
 ## Publishing (maintainers)
 

@@ -37,6 +37,16 @@ DEFAULT_MODELS = [
 
 ASPECT_RATIOS = ["auto", "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"]
 
+# Harm categories relaxed to BLOCK_NONE when safety is disabled.
+# (The AI Studio / generativelanguage API accepts these standard categories;
+# the HARM_CATEGORY_IMAGE_* variants are Vertex-only and rejected here.)
+_HARM_CATEGORIES = [
+    "HARM_CATEGORY_HARASSMENT",
+    "HARM_CATEGORY_HATE_SPEECH",
+    "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+    "HARM_CATEGORY_DANGEROUS_CONTENT",
+]
+
 # Repo root = parent of this file's "nodes/" dir.
 _NODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CONFIG_PATH = os.path.join(_NODE_DIR, "config.json")
@@ -122,6 +132,10 @@ class GeminiImage:
                 "aspect_ratio": (ASPECT_RATIOS, {"default": "auto"}),
                 "api_key": ("STRING", {"default": ""}),
                 "temperature": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "system_prompt": ("STRING", {"multiline": True, "default": ""}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "top_k": ("INT", {"default": 0, "min": 0, "max": 100}),
+                "enable_safety": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -141,6 +155,10 @@ class GeminiImage:
         aspect_ratio="auto",
         api_key="",
         temperature=1.0,
+        system_prompt="",
+        top_p=0.95,
+        top_k=0,
+        enable_safety=True,
     ):
         log = []
 
@@ -176,8 +194,19 @@ class GeminiImage:
                 "temperature": float(temperature),
                 "seed": safe_seed,
             }
+            if system_prompt and system_prompt.strip():
+                config_kwargs["system_instruction"] = system_prompt.strip()
+            if top_p and float(top_p) > 0:
+                config_kwargs["top_p"] = float(top_p)
+            if top_k and int(top_k) > 0:
+                config_kwargs["top_k"] = int(top_k)
             if aspect_ratio and aspect_ratio != "auto":
                 config_kwargs["image_config"] = types.ImageConfig(aspect_ratio=aspect_ratio)
+            if not enable_safety:
+                config_kwargs["safety_settings"] = [
+                    types.SafetySetting(category=c, threshold="BLOCK_NONE")
+                    for c in _HARM_CATEGORIES
+                ]
             config = types.GenerateContentConfig(**config_kwargs)
 
             resp = client.models.generate_content(model=model, contents=contents, config=config)
