@@ -74,7 +74,13 @@ Three ways to provide it, in priority order:
 - [x] top_p / top_k
 - [x] safety settings toggle
 - [x] publish to ComfyUI Registry
-- [ ] candidate_count / batch output
+
+Not planned:
+
+- **candidate_count** — Gemini image models reject it ("Multiple candidates is
+  not enabled for this model").
+- **batch output** — no need; use ComfyUI's built-in run count (top-right) with
+  a randomized seed to get N variations.
 
 ## Publishing (maintainers)
 
