@@ -6,13 +6,16 @@ new file under nodes/ and register it here.
 """
 
 from .nodes.gemini_image import GeminiImage
+from .nodes.gemini_video import GeminiVeoVideo
 
 NODE_CLASS_MAPPINGS = {
     "GeminiImage_y277an": GeminiImage,
+    "GeminiVeoVideo_y277an": GeminiVeoVideo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "GeminiImage_y277an": "Gemini Image (y277an)",
+    "GeminiVeoVideo_y277an": "Gemini Veo Video (y277an)",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

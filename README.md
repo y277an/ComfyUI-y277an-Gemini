@@ -1,14 +1,14 @@
 # ComfyUI-y277an-Gemini
 
-ComfyUI custom node for **text-to-image** and **image editing** with Google
-Gemini (Nano Banana / 2.5 Flash Image family).
+ComfyUI custom nodes for **image** (text-to-image, editing) and **video**
+(Veo text/image-to-video) generation with Google Gemini.
 
 > Uses your own Google AI Studio API key (billed to your Google account),
 > not Comfy credits.
 
-## Node
+## Nodes
 
-**Gemini Image (y277an)** — one node for both generation and editing:
+### Gemini Image (y277an) — text-to-image and editing
 
 - Attach an `image` (and optionally `image2` / `image3`) → **edit / compose**
 - No image → **text-to-image**
@@ -26,6 +26,25 @@ Gemini (Nano Banana / 2.5 Flash Image family).
 | `system_prompt` (opt) | System instruction (style / constraints); sent only if non-empty |
 | `top_p` / `top_k` (opt) | Sampling controls; `top_k=0` means unset |
 | `enable_safety` (opt) | When off, relaxes safety filters (BLOCK_NONE) |
+
+### Gemini Veo Video (y277an) — text-to-video and image-to-video
+
+- No image → **text-to-video**; attach an `image` → it becomes the **first frame**
+- Outputs: `VIDEO` (connect to SaveVideo) + `log`
+- Veo is a long-running async op (submit → poll) and is **preview-only and
+  expensive** — a few-second clip can cost real money.
+
+| Input | Description |
+|---|---|
+| `prompt` | Video description |
+| `model` | Veo model (default `veo-3.1-fast-generate-preview`) |
+| `image` (opt) | First frame → image-to-video |
+| `api_key` (opt) | Leave empty to use config.json / env |
+| `duration_seconds` / `aspect_ratio` / `negative_prompt` (opt) | Clip controls |
+
+> The AI Studio (Developer API) rejects several Veo config fields (`seed`,
+> `generate_audio`, `fps`, non-default `resolution`, …) — those are Vertex-only
+> and intentionally not exposed here.
 
 ## Install
 
@@ -74,6 +93,8 @@ Three ways to provide it, in priority order:
 - [x] top_p / top_k
 - [x] safety settings toggle
 - [x] publish to ComfyUI Registry
+- [x] Veo video node (text-to-video / image-to-video)
+- [ ] output caching (skip re-calling the API for identical requests)
 
 Not planned:
 

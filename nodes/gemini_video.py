@@ -1,0 +1,133 @@
+"""Gemini Veo video node for ComfyUI.
+
+Text-to-video and image-to-video with Google Veo (via the Gemini API).
+
+Notes:
+- Veo is an ASYNC / long-running operation: submit -> poll until done.
+- Attach an `image` -> it is used as the first frame (image-to-video);
+  otherwise pure text-to-video.
+- Output is a ComfyUI `VIDEO` (wrap the returned mp4), connect it to SaveVideo.
+- Veo is expensive and preview-only; generation takes tens of seconds.
+- Errors raise (unlike the image node) since there is no meaningful
+  placeholder video.
+"""
+
+import io
+import os
+import tempfile
+import time
+
+from .gemini_image import _resolve_key, _tensor_to_pil
+
+VEO_MODELS = [
+    "veo-3.1-fast-generate-preview",
+    "veo-3.1-generate-preview",
+    "veo-3.1-lite-generate-preview",
+]
+
+VEO_ASPECT_RATIOS = ["16:9", "9:16"]
+
+_POLL_INTERVAL = 10   # seconds between polls
+_POLL_TIMEOUT = 360   # give up after this many seconds
+
+
+class GeminiVeoVideo:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"multiline": True, "default": "a cinematic shot of a fox running through a sunny meadow"}),
+                "model": (VEO_MODELS, {"default": VEO_MODELS[0]}),
+            },
+            "optional": {
+                "image": ("IMAGE",),   # first frame -> image-to-video
+                "api_key": ("STRING", {"default": ""}),
+                "duration_seconds": ("INT", {"default": 4, "min": 2, "max": 8}),
+                "aspect_ratio": (VEO_ASPECT_RATIOS, {"default": "16:9"}),
+                "negative_prompt": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("VIDEO", "STRING")
+    RETURN_NAMES = ("video", "log")
+    FUNCTION = "generate"
+    CATEGORY = "y277an/Gemini"
+
+    def generate(
+        self,
+        prompt,
+        model,
+        image=None,
+        api_key="",
+        duration_seconds=4,
+        aspect_ratio="16:9",
+        negative_prompt="",
+    ):
+        key = _resolve_key(api_key)
+        if not key:
+            raise RuntimeError("Gemini Veo: no API key (node api_key, config.json, or GEMINI_API_KEY env)")
+
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=key)
+
+        cfg = {
+            "number_of_videos": 1,
+            "duration_seconds": int(duration_seconds),
+            "aspect_ratio": aspect_ratio,
+        }
+        if negative_prompt and negative_prompt.strip():
+            cfg["negative_prompt"] = negative_prompt.strip()
+        config = types.GenerateVideosConfig(**cfg)
+
+        # Optional first-frame image -> image-to-video.
+        image_arg = None
+        mode = "text-to-video"
+        if image is not None:
+            buf = io.BytesIO()
+            _tensor_to_pil(image).save(buf, format="PNG")
+            image_arg = types.Image(image_bytes=buf.getvalue(), mime_type="image/png")
+            mode = "image-to-video"
+
+        # Submit (long-running operation).
+        op = client.models.generate_videos(
+            model=model, prompt=prompt, image=image_arg, config=config
+        )
+
+        # Poll until done.
+        start = time.time()
+        while not op.done:
+            if time.time() - start > _POLL_TIMEOUT:
+                raise TimeoutError(f"Gemini Veo: timed out after {_POLL_TIMEOUT}s")
+            time.sleep(_POLL_INTERVAL)
+            op = client.operations.get(op)
+
+        # Extract the video.
+        resp = getattr(op, "response", None) or getattr(op, "result", None)
+        vids = getattr(resp, "generated_videos", None) or []
+        if not vids:
+            raise RuntimeError(f"Gemini Veo: no video returned ({op})")
+        video = vids[0].video
+
+        data = getattr(video, "video_bytes", None)
+        if not data:
+            client.files.download(file=video)  # populates video_bytes
+            data = getattr(video, "video_bytes", None)
+        if not data:
+            raise RuntimeError("Gemini Veo: could not obtain video bytes")
+
+        # Wrap the mp4 as a ComfyUI VIDEO via a temp file.
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(data)
+        tmp.flush()
+        tmp.close()
+
+        from comfy_api.input_impl import VideoFromFile
+
+        took = int(time.time() - start)
+        log = (
+            f"{mode} | model={model} | {duration_seconds}s "
+            f"{aspect_ratio} | {len(data)//1024} KB | ~{took}s"
+        )
+        return (VideoFromFile(tmp.name), log)
