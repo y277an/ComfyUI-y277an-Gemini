@@ -72,6 +72,16 @@ Three ways to provide it, in priority order:
 - [ ] safety settings toggle
 - [ ] publish to ComfyUI Registry
 
+## Publishing (maintainers)
+
+Releasing a new version to the Comfy Registry:
+
+1. Bump `version` in `pyproject.toml`.
+2. **Ensure `config.json` is NOT in the working tree before publishing** — it
+   may hold a real API key and must never be uploaded. Move it aside for the
+   publish, then restore it. (Do not rely on `.gitignore` for the upload.)
+3. `comfy node publish --token <registry token>` (optionally `--changelog`).
+
 ## License
 
 MIT
