@@ -26,7 +26,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from . import _cache
+from . import _cache, _util
 
 # Bundled fallback model list (used when live listing is unavailable).
 DEFAULT_MODELS = [
@@ -235,7 +235,9 @@ class GeminiImage:
                 ]
             config = types.GenerateContentConfig(**config_kwargs)
 
-            resp = client.models.generate_content(model=model, contents=contents, config=config)
+            resp = _util.with_retries(
+                lambda: client.models.generate_content(model=model, contents=contents, config=config)
+            )
 
             images, texts = [], []
             for cand in (resp.candidates or []):

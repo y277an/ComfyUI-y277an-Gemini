@@ -17,7 +17,7 @@ import os
 import tempfile
 import time
 
-from . import _cache
+from . import _cache, _util
 from .gemini_image import _resolve_key, _tensor_png_bytes, _tensor_to_pil
 
 VEO_MODELS = [
@@ -27,6 +27,33 @@ VEO_MODELS = [
 ]
 
 VEO_ASPECT_RATIOS = ["16:9", "9:16"]
+VEO_RESOLUTIONS = ["720p", "1080p"]
+
+_VEO_MODEL_CACHE = None
+
+
+def _list_veo_models():
+    """Live Veo model list (cached); falls back to the bundled list."""
+    global _VEO_MODEL_CACHE
+    if _VEO_MODEL_CACHE is not None:
+        return _VEO_MODEL_CACHE
+    models = list(VEO_MODELS)
+    key = _resolve_key("")
+    if key:
+        try:
+            from google import genai
+
+            client = genai.Client(api_key=key)
+            fetched = [
+                (getattr(m, "name", "") or "").split("/")[-1] for m in client.models.list()
+            ]
+            fetched = [n for n in fetched if "veo" in n.lower()]
+            if fetched:
+                models = fetched
+        except Exception:
+            pass
+    _VEO_MODEL_CACHE = models
+    return models
 
 _POLL_INTERVAL = 10   # seconds between polls
 _POLL_TIMEOUT = 360   # give up after this many seconds
@@ -38,13 +65,14 @@ class GeminiVeoVideo:
         return {
             "required": {
                 "prompt": ("STRING", {"multiline": True, "default": "a cinematic shot of a fox running through a sunny meadow"}),
-                "model": (VEO_MODELS, {"default": VEO_MODELS[0]}),
+                "model": (_list_veo_models(),),
             },
             "optional": {
                 "image": ("IMAGE",),   # first frame -> image-to-video
                 "api_key": ("STRING", {"default": ""}),
                 "duration_seconds": ("INT", {"default": 4, "min": 2, "max": 8}),
                 "aspect_ratio": (VEO_ASPECT_RATIOS, {"default": "16:9"}),
+                "resolution": (VEO_RESOLUTIONS, {"default": "720p"}),
                 "negative_prompt": ("STRING", {"default": ""}),
                 "use_cache": ("BOOLEAN", {"default": True}),
             },
@@ -63,6 +91,7 @@ class GeminiVeoVideo:
         api_key="",
         duration_seconds=4,
         aspect_ratio="16:9",
+        resolution="720p",
         negative_prompt="",
         use_cache=True,
     ):
@@ -74,7 +103,8 @@ class GeminiVeoVideo:
         cache_params = {
             "prompt": prompt, "model": model,
             "duration_seconds": int(duration_seconds),
-            "aspect_ratio": aspect_ratio, "negative_prompt": negative_prompt,
+            "aspect_ratio": aspect_ratio, "resolution": resolution,
+            "negative_prompt": negative_prompt,
         }
         img_bytes = [_tensor_png_bytes(image)] if image is not None else []
         cache_key = _cache.make_key("GeminiVeoVideo", cache_params, img_bytes)
@@ -91,6 +121,7 @@ class GeminiVeoVideo:
             "number_of_videos": 1,
             "duration_seconds": int(duration_seconds),
             "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
         }
         if negative_prompt and negative_prompt.strip():
             cfg["negative_prompt"] = negative_prompt.strip()
@@ -106,17 +137,31 @@ class GeminiVeoVideo:
             mode = "image-to-video"
 
         # Submit (long-running operation).
-        op = client.models.generate_videos(
-            model=model, prompt=prompt, image=image_arg, config=config
+        op = _util.with_retries(
+            lambda: client.models.generate_videos(
+                model=model, prompt=prompt, image=image_arg, config=config
+            )
         )
 
-        # Poll until done.
+        # Progress bar (best-effort; needs the ComfyUI execution context).
+        try:
+            from comfy.utils import ProgressBar
+            pbar = ProgressBar(100)
+        except Exception:
+            pbar = None
+
+        # Poll until done. Veo has no % progress, so approximate by elapsed time.
         start = time.time()
+        _est = 90.0  # rough expected seconds, just to move the bar
         while not op.done:
             if time.time() - start > _POLL_TIMEOUT:
                 raise TimeoutError(f"Gemini Veo: timed out after {_POLL_TIMEOUT}s")
             time.sleep(_POLL_INTERVAL)
             op = client.operations.get(op)
+            if pbar:
+                pbar.update_absolute(min(int((time.time() - start) / _est * 100), 99), 100)
+        if pbar:
+            pbar.update_absolute(100, 100)
 
         # Extract the video.
         resp = getattr(op, "response", None) or getattr(op, "result", None)

@@ -9,7 +9,7 @@ Output is a STRING you can feed into any node that takes text (e.g. a
 CLIPTextEncode prompt, or our GeminiImage / Veo nodes).
 """
 
-from . import _cache
+from . import _cache, _util
 from .gemini_image import _resolve_key, _tensor_png_bytes, _tensor_to_pil
 
 DEFAULT_TEXT_MODELS = [
@@ -114,8 +114,10 @@ class GeminiText:
             if system_prompt and system_prompt.strip():
                 cfg["system_instruction"] = system_prompt.strip()
 
-            resp = client.models.generate_content(
-                model=model, contents=contents, config=types.GenerateContentConfig(**cfg)
+            resp = _util.with_retries(
+                lambda: client.models.generate_content(
+                    model=model, contents=contents, config=types.GenerateContentConfig(**cfg)
+                )
             )
 
             text = (getattr(resp, "text", None) or "").strip()

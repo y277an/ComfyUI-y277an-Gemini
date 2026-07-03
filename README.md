@@ -42,7 +42,7 @@ understanding) with Google Gemini.
 | `model` | Veo model (default `veo-3.1-fast-generate-preview`) |
 | `image` (opt) | First frame → image-to-video |
 | `api_key` (opt) | Leave empty to use config.json / env |
-| `duration_seconds` / `aspect_ratio` / `negative_prompt` (opt) | Clip controls |
+| `duration_seconds` / `aspect_ratio` / `resolution` / `negative_prompt` (opt) | Clip controls (resolution 720p/1080p) |
 | `use_cache` (opt) | Reuse a cached mp4 for identical requests (see Caching) |
 
 > The AI Studio (Developer API) rejects several Veo config fields (`seed`,
@@ -103,8 +103,12 @@ Three ways to provide it, in priority order:
   missing; a clear error is returned at execution time.
 - **No hardcoded single model name**: the dropdown is populated from
   `client.models.list()` when a key is available, with a bundled fallback.
-- **Errors don't raise**: a grey placeholder image plus a `log` string are
+- **Errors don't raise** (image/text): a placeholder plus a `log` string are
   returned so the graph stays connected.
+- **Automatic retries**: transient errors (rate limit / 5xx) are retried with
+  exponential backoff; real errors surface immediately.
+- **Veo progress**: the video node drives the ComfyUI progress bar while polling
+  so it doesn't look frozen, and its model list is fetched live too.
 
 ## Caching
 
