@@ -26,7 +26,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from . import _cache, _util
+from . import _cache, _models, _util
 
 # Bundled fallback model list (used when live listing is unavailable).
 DEFAULT_MODELS = [
@@ -53,7 +53,8 @@ _HARM_CATEGORIES = [
 _NODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CONFIG_PATH = os.path.join(_NODE_DIR, "config.json")
 
-_MODEL_CACHE = None  # module-level cache so INPUT_TYPES doesn't hit the API repeatedly
+def _is_image_model(name: str) -> bool:
+    return "gemini" in name and "image" in name
 
 
 def _key_from_config() -> str:
@@ -74,31 +75,9 @@ def _resolve_key(api_key: str) -> str:
 
 
 def _list_models() -> list:
-    """Live model list (image-capable Gemini models), cached; falls back to
-    DEFAULT_MODELS when no key is configured or the call fails."""
-    global _MODEL_CACHE
-    if _MODEL_CACHE is not None:
-        return _MODEL_CACHE
-
-    models = list(DEFAULT_MODELS)
-    key = _resolve_key("")  # node field is not available at INPUT_TYPES time
-    if key:
-        try:
-            from google import genai
-
-            client = genai.Client(api_key=key)
-            fetched = []
-            for m in client.models.list():
-                short = (getattr(m, "name", "") or "").split("/")[-1]
-                if "gemini" in short and "image" in short:
-                    fetched.append(short)
-            if fetched:
-                models = fetched
-        except Exception:
-            pass
-
-    _MODEL_CACHE = models
-    return models
+    """Model dropdown, read from disk cache (no network at UI-load time);
+    falls back to DEFAULT_MODELS. Refreshed from generate()."""
+    return _models.load_cached("image", DEFAULT_MODELS)
 
 
 def _tensor_to_pil(image: "torch.Tensor") -> Image.Image:
@@ -191,6 +170,7 @@ class GeminiImage:
 
         try:
             client = genai.Client(api_key=key)
+            _models.refresh("image", client, _is_image_model)
 
             # Attach any provided images -> edit mode; otherwise generate.
             contents = [prompt]

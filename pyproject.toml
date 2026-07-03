@@ -3,12 +3,15 @@
 [project]
 name = "comfyui-y277an-gemini"
 description = "ComfyUI nodes for Google Gemini: image generation & editing (Nano Banana), Veo video, text/prompt generation, and TTS speech."
-version = "0.7.0"
+version = "0.8.0"
 license = { file = "LICENSE" }
 dependencies = ["google-genai", "pillow", "numpy"]
 
 [project.urls]
 Repository = "https://github.com/y277an/ComfyUI-y277an-Gemini"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.comfy]
 PublisherId = "y277an"

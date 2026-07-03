@@ -111,8 +111,9 @@ Three ways to provide it, in priority order:
 
 - **Lazy import** of `google-genai`: ComfyUI still boots if the dependency is
   missing; a clear error is returned at execution time.
-- **No hardcoded single model name**: the dropdown is populated from
-  `client.models.list()` when a key is available, with a bundled fallback.
+- **No network at UI-load**: model dropdowns are read from a disk cache (or a
+  bundled fallback) — never a blocking API call while ComfyUI loads. The live
+  list is refreshed opportunistically when a node runs (once per day).
 - **Errors don't raise** (image/text): a placeholder plus a `log` string are
   returned so the graph stays connected.
 - **Automatic retries**: transient errors (rate limit / 5xx) are retried with
@@ -151,6 +152,11 @@ Not planned:
   not enabled for this model").
 - **batch output** — no need; use ComfyUI's built-in run count (top-right) with
   a randomized seed to get N variations.
+
+## Development
+
+`pytest` runs the unit tests (pure logic — cache keys, retries, model-list
+cache; no API key or heavy deps needed). CI runs them on every push.
 
 ## Publishing (maintainers)
 

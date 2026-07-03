@@ -17,7 +17,7 @@ import os
 import tempfile
 import time
 
-from . import _cache, _util
+from . import _cache, _models, _util
 from .gemini_image import _resolve_key, _tensor_png_bytes, _tensor_to_pil
 
 VEO_MODELS = [
@@ -29,31 +29,15 @@ VEO_MODELS = [
 VEO_ASPECT_RATIOS = ["16:9", "9:16"]
 VEO_RESOLUTIONS = ["720p", "1080p"]
 
-_VEO_MODEL_CACHE = None
+
+def _is_veo_model(name: str) -> bool:
+    return "veo" in name.lower()
 
 
 def _list_veo_models():
-    """Live Veo model list (cached); falls back to the bundled list."""
-    global _VEO_MODEL_CACHE
-    if _VEO_MODEL_CACHE is not None:
-        return _VEO_MODEL_CACHE
-    models = list(VEO_MODELS)
-    key = _resolve_key("")
-    if key:
-        try:
-            from google import genai
-
-            client = genai.Client(api_key=key)
-            fetched = [
-                (getattr(m, "name", "") or "").split("/")[-1] for m in client.models.list()
-            ]
-            fetched = [n for n in fetched if "veo" in n.lower()]
-            if fetched:
-                models = fetched
-        except Exception:
-            pass
-    _VEO_MODEL_CACHE = models
-    return models
+    """Veo model dropdown from disk cache (no network at UI-load); refreshed
+    from generate()."""
+    return _models.load_cached("veo", VEO_MODELS)
 
 _POLL_INTERVAL = 10   # seconds between polls
 _POLL_TIMEOUT = 360   # give up after this many seconds
@@ -116,6 +100,7 @@ class GeminiVeoVideo:
         from google.genai import types
 
         client = genai.Client(api_key=key)
+        _models.refresh("veo", client, _is_veo_model)
 
         cfg = {
             "number_of_videos": 1,

@@ -15,3 +15,7 @@ jobs:
           python-version: "3.11"
       - name: Byte-compile all Python (catches syntax errors)
         run: python -m compileall -q __init__.py nodes
+      - name: Unit tests (pure logic, no heavy deps)
+        run: |
+          pip install pytest
+          pytest -q tests
