@@ -1,0 +1,21 @@
+{
+  "1": {
+    "class_type": "GeminiText_y277an",
+    "inputs": {
+      "prompt": "Expand this into a vivid, detailed image-generation prompt: a blue cat running, happy",
+      "model": "gemini-2.5-flash"
+    }
+  },
+  "2": {
+    "class_type": "GeminiImage_y277an",
+    "inputs": {
+      "prompt": ["1", 0],
+      "model": "gemini-2.5-flash-image",
+      "seed": 0
+    }
+  },
+  "3": {
+    "class_type": "SaveImage",
+    "inputs": {"images": ["2", 0], "filename_prefix": "gemini_text_to_image"}
+  }
+}

@@ -1,5 +1,7 @@
 # ComfyUI-y277an-Gemini
 
+![CI](https://github.com/y277an/ComfyUI-y277an-Gemini/actions/workflows/ci.yml/badge.svg)
+
 ComfyUI custom nodes for **image** (text-to-image, editing), **video**
 (Veo text/image-to-video), **text** (prompt generation / image understanding),
 and **speech** (TTS) with Google Gemini.
@@ -87,6 +89,9 @@ cp config.json.example config.json
 
 Or use ComfyUI-Manager → "Install via Git URL" with this repo, then create
 `config.json` as above.
+
+See [`example_workflows/`](example_workflows/) for ready-made graphs (image
+generate/edit, text→image, video, TTS).
 
 ## API key
 

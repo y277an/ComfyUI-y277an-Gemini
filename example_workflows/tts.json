@@ -1,0 +1,14 @@
+{
+  "1": {
+    "class_type": "GeminiTTS_y277an",
+    "inputs": {
+      "text": "Hello! This is the Gemini text to speech node.",
+      "model": "gemini-2.5-flash-preview-tts",
+      "voice": "Kore"
+    }
+  },
+  "2": {
+    "class_type": "SaveAudio",
+    "inputs": {"audio": ["1", 0], "filename_prefix": "gemini_tts"}
+  }
+}

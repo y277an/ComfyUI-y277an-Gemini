@@ -1,0 +1,16 @@
+{
+  "1": {
+    "class_type": "GeminiVeoVideo_y277an",
+    "inputs": {
+      "prompt": "a cinematic shot of a red fox running through a sunny meadow, golden light",
+      "model": "veo-3.1-lite-generate-preview",
+      "duration_seconds": 4,
+      "aspect_ratio": "16:9",
+      "resolution": "720p"
+    }
+  },
+  "2": {
+    "class_type": "SaveVideo",
+    "inputs": {"video": ["1", 0], "filename_prefix": "gemini_veo", "format": "auto", "codec": "auto"}
+  }
+}
