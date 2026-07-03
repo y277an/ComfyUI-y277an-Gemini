@@ -26,6 +26,8 @@ import numpy as np
 import torch
 from PIL import Image
 
+from . import _cache
+
 # Bundled fallback model list (used when live listing is unavailable).
 DEFAULT_MODELS = [
     "gemini-2.5-flash-image",
@@ -111,6 +113,13 @@ def _pil_to_tensor(pil: Image.Image) -> "torch.Tensor":
     return torch.from_numpy(arr)[None, ...]
 
 
+def _tensor_png_bytes(image: "torch.Tensor") -> bytes:
+    """First frame of a ComfyUI IMAGE as PNG bytes (for cache keys / storage)."""
+    b = io.BytesIO()
+    _tensor_to_pil(image).save(b, format="PNG")
+    return b.getvalue()
+
+
 def _placeholder() -> "torch.Tensor":
     """Grey placeholder so the IMAGE output is always a valid tensor."""
     return _pil_to_tensor(Image.new("RGB", (512, 512), (64, 64, 64)))
@@ -136,6 +145,7 @@ class GeminiImage:
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "top_k": ("INT", {"default": 0, "min": 0, "max": 100}),
                 "enable_safety": ("BOOLEAN", {"default": True}),
+                "use_cache": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -159,6 +169,7 @@ class GeminiImage:
         top_p=0.95,
         top_k=0,
         enable_safety=True,
+        use_cache=True,
     ):
         log = []
 
@@ -187,6 +198,21 @@ class GeminiImage:
             for im in input_images:
                 contents.append(_tensor_to_pil(im))
             log.append(f"mode: {'edit' if input_images else 'generate'} ({len(input_images)} input image(s))")
+
+            # --- output cache: identical request -> reuse, skip the API call ---
+            cache_params = {
+                "prompt": prompt, "model": model, "seed": int(seed),
+                "aspect_ratio": aspect_ratio, "temperature": float(temperature),
+                "system_prompt": system_prompt, "top_p": float(top_p),
+                "top_k": int(top_k), "enable_safety": bool(enable_safety),
+            }
+            cache_key = _cache.make_key(
+                "GeminiImage", cache_params, [_tensor_png_bytes(im) for im in input_images]
+            )
+            if use_cache:
+                hit = _cache.load(cache_key, "png")
+                if hit is not None:
+                    return (_pil_to_tensor(Image.open(io.BytesIO(hit))), "cache hit\n" + "\n".join(log))
 
             safe_seed = int(seed) % (2 ** 31)  # Gemini seed is int32
             config_kwargs = {
@@ -235,6 +261,8 @@ class GeminiImage:
                 log.append(f"aspect_ratio={aspect_ratio}")
             if texts:
                 log.append("model note: " + " ".join(texts)[:200])
+            if use_cache:
+                _cache.save(cache_key, "png", _tensor_png_bytes(out))
             return (out, "\n".join(log))
 
         except Exception as e:

@@ -27,6 +27,7 @@ understanding) with Google Gemini.
 | `system_prompt` (opt) | System instruction (style / constraints); sent only if non-empty |
 | `top_p` / `top_k` (opt) | Sampling controls; `top_k=0` means unset |
 | `enable_safety` (opt) | When off, relaxes safety filters (BLOCK_NONE) |
+| `use_cache` (opt) | Reuse a cached result for identical requests (see Caching) |
 
 ### Gemini Veo Video (y277an) — text-to-video and image-to-video
 
@@ -42,6 +43,7 @@ understanding) with Google Gemini.
 | `image` (opt) | First frame → image-to-video |
 | `api_key` (opt) | Leave empty to use config.json / env |
 | `duration_seconds` / `aspect_ratio` / `negative_prompt` (opt) | Clip controls |
+| `use_cache` (opt) | Reuse a cached mp4 for identical requests (see Caching) |
 
 > The AI Studio (Developer API) rejects several Veo config fields (`seed`,
 > `generate_audio`, `fps`, non-default `resolution`, …) — those are Vertex-only
@@ -61,6 +63,7 @@ understanding) with Google Gemini.
 | `system_prompt` (opt) | System instruction |
 | `api_key` (opt) | Leave empty to use config.json / env |
 | `temperature` (opt) | Sampling temperature |
+| `use_cache` (opt) | Reuse a cached result for identical requests (see Caching) |
 
 ## Install
 
@@ -103,6 +106,19 @@ Three ways to provide it, in priority order:
 - **Errors don't raise**: a grey placeholder image plus a `log` string are
   returned so the graph stays connected.
 
+## Caching
+
+Every node has a `use_cache` toggle (on by default). Identical requests
+(same prompt / model / params / input images) reuse a cached result instead of
+re-calling the paid API — the second run returns instantly and costs nothing.
+Especially useful for the expensive Veo video node.
+
+- Cache is a content-addressed store (SHA-256 of the request) under `.cache/`
+  (gitignored). The API key is never part of the key.
+- Turn `use_cache` off to force a fresh call.
+- To vary results on purpose, change the prompt/params (or the image node's
+  `seed`) — that produces a different key and a fresh generation.
+
 ## Roadmap
 
 - [x] system prompt / instruction input
@@ -110,7 +126,8 @@ Three ways to provide it, in priority order:
 - [x] safety settings toggle
 - [x] publish to ComfyUI Registry
 - [x] Veo video node (text-to-video / image-to-video)
-- [ ] output caching (skip re-calling the API for identical requests)
+- [x] Gemini Text node (prompt generation / image understanding)
+- [x] output caching (skip re-calling the API for identical requests)
 
 Not planned:
 

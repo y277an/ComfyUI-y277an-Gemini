@@ -17,7 +17,8 @@ import os
 import tempfile
 import time
 
-from .gemini_image import _resolve_key, _tensor_to_pil
+from . import _cache
+from .gemini_image import _resolve_key, _tensor_png_bytes, _tensor_to_pil
 
 VEO_MODELS = [
     "veo-3.1-fast-generate-preview",
@@ -45,6 +46,7 @@ class GeminiVeoVideo:
                 "duration_seconds": ("INT", {"default": 4, "min": 2, "max": 8}),
                 "aspect_ratio": (VEO_ASPECT_RATIOS, {"default": "16:9"}),
                 "negative_prompt": ("STRING", {"default": ""}),
+                "use_cache": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -62,10 +64,23 @@ class GeminiVeoVideo:
         duration_seconds=4,
         aspect_ratio="16:9",
         negative_prompt="",
+        use_cache=True,
     ):
         key = _resolve_key(api_key)
         if not key:
             raise RuntimeError("Gemini Veo: no API key (node api_key, config.json, or GEMINI_API_KEY env)")
+
+        # --- output cache: identical request -> reuse the mp4, skip the (paid) call ---
+        cache_params = {
+            "prompt": prompt, "model": model,
+            "duration_seconds": int(duration_seconds),
+            "aspect_ratio": aspect_ratio, "negative_prompt": negative_prompt,
+        }
+        img_bytes = [_tensor_png_bytes(image)] if image is not None else []
+        cache_key = _cache.make_key("GeminiVeoVideo", cache_params, img_bytes)
+        if use_cache and os.path.exists(_cache.path_for(cache_key, "mp4")):
+            from comfy_api.input_impl import VideoFromFile
+            return (VideoFromFile(_cache.path_for(cache_key, "mp4")), "cache hit")
 
         from google import genai
         from google.genai import types
@@ -117,11 +132,16 @@ class GeminiVeoVideo:
         if not data:
             raise RuntimeError("Gemini Veo: could not obtain video bytes")
 
-        # Wrap the mp4 as a ComfyUI VIDEO via a temp file.
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(data)
-        tmp.flush()
-        tmp.close()
+        # Persist the mp4 (cache dir when caching, else a temp file) and wrap it.
+        if use_cache:
+            _cache.save(cache_key, "mp4", data)
+            video_path = _cache.path_for(cache_key, "mp4")
+        else:
+            tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+            tmp.write(data)
+            tmp.flush()
+            tmp.close()
+            video_path = tmp.name
 
         from comfy_api.input_impl import VideoFromFile
 
@@ -130,4 +150,4 @@ class GeminiVeoVideo:
             f"{mode} | model={model} | {duration_seconds}s "
             f"{aspect_ratio} | {len(data)//1024} KB | ~{took}s"
         )
-        return (VideoFromFile(tmp.name), log)
+        return (VideoFromFile(video_path), log)

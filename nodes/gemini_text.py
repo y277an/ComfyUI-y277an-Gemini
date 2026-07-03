@@ -9,7 +9,8 @@ Output is a STRING you can feed into any node that takes text (e.g. a
 CLIPTextEncode prompt, or our GeminiImage / Veo nodes).
 """
 
-from .gemini_image import _resolve_key, _tensor_to_pil
+from . import _cache
+from .gemini_image import _resolve_key, _tensor_png_bytes, _tensor_to_pil
 
 DEFAULT_TEXT_MODELS = [
     "gemini-2.5-flash",
@@ -69,6 +70,7 @@ class GeminiText:
                 "system_prompt": ("STRING", {"multiline": True, "default": ""}),
                 "api_key": ("STRING", {"default": ""}),
                 "temperature": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "use_cache": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -77,10 +79,23 @@ class GeminiText:
     FUNCTION = "generate"
     CATEGORY = "y277an/Gemini"
 
-    def generate(self, prompt, model, image=None, image2=None, system_prompt="", api_key="", temperature=1.0):
+    def generate(self, prompt, model, image=None, image2=None, system_prompt="", api_key="", temperature=1.0, use_cache=True):
         key = _resolve_key(api_key)
         if not key:
             return ("ERROR: no API key (node api_key, config.json, or GEMINI_API_KEY env)",)
+
+        input_images = [im for im in (image, image2) if im is not None]
+        cache_params = {
+            "prompt": prompt, "model": model,
+            "system_prompt": system_prompt, "temperature": float(temperature),
+        }
+        cache_key = _cache.make_key(
+            "GeminiText", cache_params, [_tensor_png_bytes(im) for im in input_images]
+        )
+        if use_cache:
+            hit = _cache.load(cache_key, "txt")
+            if hit is not None:
+                return (hit.decode("utf-8"),)
 
         try:
             from google import genai
@@ -92,9 +107,8 @@ class GeminiText:
             client = genai.Client(api_key=key)
 
             contents = [prompt]
-            for im in (image, image2):
-                if im is not None:
-                    contents.append(_tensor_to_pil(im))
+            for im in input_images:
+                contents.append(_tensor_to_pil(im))
 
             cfg = {"temperature": float(temperature)}
             if system_prompt and system_prompt.strip():
@@ -113,6 +127,8 @@ class GeminiText:
                             parts.append(p.text)
                 text = " ".join(parts).strip()
 
+            if use_cache and text:
+                _cache.save(cache_key, "txt", text.encode("utf-8"))
             return (text or "(no text returned)",)
 
         except Exception as e:
