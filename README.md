@@ -1,8 +1,8 @@
 # ComfyUI-y277an-Gemini
 
 ComfyUI custom nodes for **image** (text-to-image, editing), **video**
-(Veo text/image-to-video), and **text** (prompt generation / image
-understanding) with Google Gemini.
+(Veo text/image-to-video), **text** (prompt generation / image understanding),
+and **speech** (TTS) with Google Gemini.
 
 > Uses your own Google AI Studio API key (billed to your Google account),
 > not Comfy credits.
@@ -64,6 +64,11 @@ understanding) with Google Gemini.
 | `api_key` (opt) | Leave empty to use config.json / env |
 | `temperature` (opt) | Sampling temperature |
 | `use_cache` (opt) | Reuse a cached result for identical requests (see Caching) |
+
+### Gemini TTS (y277an) — text-to-speech
+
+- Text → `AUDIO` (connect to SaveAudio / PreviewAudio); 24 kHz mono
+- Inputs: `text`, `model`, `voice` (prebuilt voices), `api_key` (opt), `use_cache` (opt)
 
 ## Install
 
@@ -131,7 +136,9 @@ Especially useful for the expensive Veo video node.
 - [x] publish to ComfyUI Registry
 - [x] Veo video node (text-to-video / image-to-video)
 - [x] Gemini Text node (prompt generation / image understanding)
+- [x] Gemini TTS node (text-to-speech)
 - [x] output caching (skip re-calling the API for identical requests)
+- [x] automatic retries on transient errors
 
 Not planned:
 

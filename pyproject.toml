@@ -2,8 +2,8 @@
 # Set PublisherId to your registered publisher id before publishing.
 [project]
 name = "comfyui-y277an-gemini"
-description = "ComfyUI nodes for Google Gemini: image generation & editing (Nano Banana), Veo video, and text/prompt generation."
-version = "0.6.0"
+description = "ComfyUI nodes for Google Gemini: image generation & editing (Nano Banana), Veo video, text/prompt generation, and TTS speech."
+version = "0.7.0"
 license = { file = "LICENSE" }
 dependencies = ["google-genai", "pillow", "numpy"]
 
