@@ -16,8 +16,15 @@ TTS_MODELS = [
     "gemini-3.1-flash-tts-preview",
 ]
 
-# A subset of Gemini's prebuilt voices.
-VOICES = ["Kore", "Puck", "Charon", "Fenrir", "Aoede", "Leda", "Orus", "Zephyr"]
+# Gemini's prebuilt voices.
+VOICES = [
+    "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede",
+    "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel", "Algieba",
+    "Despina", "Erinome", "Algenib", "Rasalgethi", "Laomedeia", "Achernar",
+    "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi",
+    "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat",
+]
+VOICES_OFF = ["(none)"] + VOICES  # for the optional second speaker
 
 _SAMPLE_RATE = 24000  # Gemini TTS returns 24 kHz 16-bit mono PCM
 
@@ -40,11 +47,16 @@ class GeminiTTS:
             "required": {
                 "text": ("STRING", {"multiline": True, "default": "Hello from Gemini."}),
                 "model": (TTS_MODELS, {"default": TTS_MODELS[0]}),
-                "voice": (VOICES, {"default": VOICES[0]}),
+                "voice": (VOICES, {"default": "Kore"}),
             },
             "optional": {
                 "api_key": ("STRING", {"default": ""}),
                 "use_cache": ("BOOLEAN", {"default": True}),
+                "language_code": ("STRING", {"default": ""}),  # e.g. "en-US", "cmn-CN"; empty = auto
+                # Multi-speaker: set a 2nd voice and write text as "Name: line".
+                "speaker2_voice": (VOICES_OFF, {"default": "(none)"}),
+                "speaker1_name": ("STRING", {"default": "Speaker1"}),
+                "speaker2_name": ("STRING", {"default": "Speaker2"}),
             },
         }
 
@@ -53,12 +65,19 @@ class GeminiTTS:
     FUNCTION = "generate"
     CATEGORY = "y277an/Gemini"
 
-    def generate(self, text, model, voice, api_key="", use_cache=True):
+    def generate(self, text, model, voice, api_key="", use_cache=True, language_code="",
+                 speaker2_voice="(none)", speaker1_name="Speaker1", speaker2_name="Speaker2"):
         key = _resolve_key(api_key)
         if not key:
             return (_silent_audio(), "ERROR: no API key (node api_key, config.json, or GEMINI_API_KEY env)")
 
-        cache_key = _cache.make_key("GeminiTTS", {"text": text, "model": model, "voice": voice})
+        multi = speaker2_voice and speaker2_voice != "(none)"
+        cache_key = _cache.make_key("GeminiTTS", {
+            "text": text, "model": model, "voice": voice, "language_code": language_code,
+            "speaker2_voice": speaker2_voice if multi else "",
+            "speaker1_name": speaker1_name if multi else "",
+            "speaker2_name": speaker2_name if multi else "",
+        })
         if use_cache:
             hit = _cache.load(cache_key, "pcm")
             if hit is not None:
@@ -70,15 +89,26 @@ class GeminiTTS:
         except ImportError as e:
             return (_silent_audio(), f"ERROR: google-genai not installed ({e})")
 
+        def _voice_cfg(name):
+            return types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=name))
+
         try:
             client = genai.Client(api_key=key)
+            speech_kwargs = {}
+            if language_code and language_code.strip():
+                speech_kwargs["language_code"] = language_code.strip()
+            if multi:
+                speech_kwargs["multi_speaker_voice_config"] = types.MultiSpeakerVoiceConfig(
+                    speaker_voice_configs=[
+                        types.SpeakerVoiceConfig(speaker=speaker1_name or "Speaker1", voice_config=_voice_cfg(voice)),
+                        types.SpeakerVoiceConfig(speaker=speaker2_name or "Speaker2", voice_config=_voice_cfg(speaker2_voice)),
+                    ]
+                )
+            else:
+                speech_kwargs["voice_config"] = _voice_cfg(voice)
             config = types.GenerateContentConfig(
                 response_modalities=["Audio"],
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice)
-                    )
-                ),
+                speech_config=types.SpeechConfig(**speech_kwargs),
             )
             resp = _util.with_retries(
                 lambda: client.models.generate_content(model=model, contents=text, config=config)
@@ -106,7 +136,9 @@ class GeminiTTS:
 
             if use_cache:
                 _cache.save(cache_key, "pcm", data)
-            return (_pcm_to_audio(data, rate), f"model={model} voice={voice} | {len(data)//1024} KB @ {rate}Hz")
+            who = f"{voice}+{speaker2_voice}" if multi else voice
+            return (_pcm_to_audio(data, rate),
+                    f"model={model} voice={who} lang={language_code or 'auto'} | {len(data)//1024} KB @ {rate}Hz")
 
         except Exception as e:
             return (_silent_audio(), f"ERROR: {type(e).__name__}: {str(e)[:300]}")

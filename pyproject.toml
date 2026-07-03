@@ -3,9 +3,9 @@
 [project]
 name = "comfyui-y277an-gemini"
 description = "ComfyUI nodes for Google Gemini: image generation & editing (Nano Banana), Veo video, text/prompt generation, and TTS speech."
-version = "0.8.0"
+version = "0.9.0"
 license = { file = "LICENSE" }
-dependencies = ["google-genai", "pillow", "numpy"]
+dependencies = ["google-genai>=2.10", "pillow>=9.0", "numpy>=1.21"]
 
 [project.urls]
 Repository = "https://github.com/y277an/ComfyUI-y277an-Gemini"

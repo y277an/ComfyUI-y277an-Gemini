@@ -1,4 +1,4 @@
-google-genai
-pillow
-numpy
+google-genai>=2.10
+pillow>=9.0
+numpy>=1.21
 # torch is provided by ComfyUI and intentionally not pinned here

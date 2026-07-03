@@ -135,9 +135,11 @@ class GeminiVeoVideo:
         except Exception:
             pbar = None
 
-        # Poll until done. Veo has no % progress, so approximate by elapsed time.
+        # Poll until done. Veo exposes no % progress, so approximate by elapsed
+        # time. Estimate scales with clip length and resolution (calibrated from
+        # observed runs: ~4s/720p ≈ 40-50s).
         start = time.time()
-        _est = 90.0  # rough expected seconds, just to move the bar
+        _est = (25.0 + int(duration_seconds) * 6.0) * (1.8 if resolution == "1080p" else 1.0)
         while not op.done:
             if time.time() - start > _POLL_TIMEOUT:
                 raise TimeoutError(f"Gemini Veo: timed out after {_POLL_TIMEOUT}s")

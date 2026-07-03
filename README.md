@@ -9,6 +9,10 @@ and **speech** (TTS) with Google Gemini.
 > Uses your own Google AI Studio API key (billed to your Google account),
 > not Comfy credits.
 
+![sample output](assets/sample.jpg)
+
+*Example output from the Gemini Image node (text-to-image).*
+
 ## Nodes
 
 ### Gemini Image (y277an) — text-to-image and editing
@@ -70,7 +74,10 @@ and **speech** (TTS) with Google Gemini.
 ### Gemini TTS (y277an) — text-to-speech
 
 - Text → `AUDIO` (connect to SaveAudio / PreviewAudio); 24 kHz mono
-- Inputs: `text`, `model`, `voice` (prebuilt voices), `api_key` (opt), `use_cache` (opt)
+- Inputs: `text`, `model`, `voice` (30 prebuilt voices), `api_key`/`use_cache` (opt)
+- `language_code` (opt): e.g. `en-US`, `cmn-CN`; empty = auto
+- **Multi-speaker** (opt): set `speaker2_voice` and write the text as
+  `Speaker1: ...` / `Speaker2: ...` (names configurable) for a two-voice dialogue
 
 ## Install
 
