@@ -1,7 +1,8 @@
 # ComfyUI-y277an-Gemini
 
-ComfyUI custom nodes for **image** (text-to-image, editing) and **video**
-(Veo text/image-to-video) generation with Google Gemini.
+ComfyUI custom nodes for **image** (text-to-image, editing), **video**
+(Veo text/image-to-video), and **text** (prompt generation / image
+understanding) with Google Gemini.
 
 > Uses your own Google AI Studio API key (billed to your Google account),
 > not Comfy credits.
@@ -45,6 +46,21 @@ ComfyUI custom nodes for **image** (text-to-image, editing) and **video**
 > The AI Studio (Developer API) rejects several Veo config fields (`seed`,
 > `generate_audio`, `fps`, non-default `resolution`, …) — those are Vertex-only
 > and intentionally not exposed here.
+
+### Gemini Text (y277an) — prompt generation and image understanding
+
+- No image → **text generation** (e.g. expand a short idea into a rich prompt)
+- Attach an `image` → **vision** (describe / caption / analyze it)
+- Output: `STRING` — feed it into CLIPTextEncode, or our Gemini Image / Veo nodes
+
+| Input | Description |
+|---|---|
+| `prompt` | Instruction (e.g. "expand into a detailed image prompt") |
+| `model` | Text model (live list, fallback bundled) |
+| `image` / `image2` (opt) | Reference images for vision tasks |
+| `system_prompt` (opt) | System instruction |
+| `api_key` (opt) | Leave empty to use config.json / env |
+| `temperature` (opt) | Sampling temperature |
 
 ## Install
 
