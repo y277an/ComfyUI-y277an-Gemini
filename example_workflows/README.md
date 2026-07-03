@@ -7,7 +7,7 @@ endpoint, or load with a script). They document how each node connects.
 |---|---|
 | `image_generate.json` | Gemini Image → Save Image (text-to-image) |
 | `image_edit.json` | Load Image → Gemini Image → Save Image (editing) |
-| `text_to_image.json` | Gemini Text (prompt enhance) → Gemini Image → Save Image |
+| `image_caption.json` | Load Image → Gemini Text (vision) → Preview (describe an image) |
 | `veo_video.json` | Gemini Veo Video → Save Video |
 | `tts.json` | Gemini TTS → Save Audio |
 
